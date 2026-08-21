@@ -117,7 +117,7 @@ for col in df.columns:
  
     if len(unique_values) <= 20:
         selected = st.sidebar.multiselect(
-            f"Select {col}",
+            f"{col}",
             unique_values,
             default=[],
             key=f'multiselect_{col}'
@@ -130,7 +130,7 @@ for col in df.columns:
  
     else:
         text_filter = st.sidebar.text_input(
-            f"Filter {col} contains",
+            f"{col} contains",
             key=f'text_filter_{col}'
         )
  
