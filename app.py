@@ -16,39 +16,58 @@ st.set_page_config(page_title="FDA 510K Explorer", layout="wide")
 # -----------------------------
 @st.cache_data
 
+#
+## Function to load FDA 510k data (simulating st.cache_data for Colab environment)
+#def load_fda_data():
+#    url = "https://download.open.fda.gov/device/510k/device-510k-0001-of-0001.json.zip"
+#
+#    # Download the zip file
+#    response = requests.get(url)
+#    response.raise_for_status() # Raise an exception for HTTP errors
+#
+#    # Read the zip file content from memory
+#    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+#        json_filename = z.namelist()[0]
+#        with z.open(json_filename) as f:
+#            raw_json_data = json.load(f)
+#
+#            if 'results' in raw_json_data and isinstance(raw_json_data['results'], list):
+#                df_fda_json = pd.DataFrame(raw_json_data['results'])
+#            else:
+#                print("Warning: 'results' key not found or not a list. Attempting to load entire JSON.")
+#                df_fda_json = pd.DataFrame(raw_json_data)
+#
+#    # Select and rename columns as requested
+#    # Note: 'decision_date' is mapped to 'date_received' and 'decision_code' is mapped to 'decision_description'
+#    # as these are the available column names in the loaded FDA JSON data.
+#    selected_df = df_fda_json[['k_number', 'applicant','device_name', 'contact', 
+#        'decision_date', 'date_received','decision_code',
+#       'expedited_review_flag','clearance_type', 'product_code']]
+## 'statement_or_summary',
+#    return selected_df
+#
+## Load the data
+#df = load_fda_data()
+## Ensure 'decision_date' and 'date_received' are in datetime format
+#df['decision_date'] = pd.to_datetime(df['decision_date'], errors='coerce')
+#df['date_received'] = pd.to_datetime(df['date_received'], errors='coerce')
+#df = df.sort_values(by="decision_date", ascending=False)
+#
+#df["Review Time (Days)"] = (df["decision_date"] - df["date_received"]).dt.days
+#
+#df["year"] = df["date_received"].dt.year
 
-# Function to load FDA 510k data (simulating st.cache_data for Colab environment)
-def load_fda_data():
-    url = "https://download.open.fda.gov/device/510k/device-510k-0001-of-0001.json.zip"
-
-    # Download the zip file
-    response = requests.get(url)
-    response.raise_for_status() # Raise an exception for HTTP errors
-
-    # Read the zip file content from memory
-    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-        json_filename = z.namelist()[0]
-        with z.open(json_filename) as f:
-            raw_json_data = json.load(f)
-
-            if 'results' in raw_json_data and isinstance(raw_json_data['results'], list):
-                df_fda_json = pd.DataFrame(raw_json_data['results'])
-            else:
-                print("Warning: 'results' key not found or not a list. Attempting to load entire JSON.")
-                df_fda_json = pd.DataFrame(raw_json_data)
-
-    # Select and rename columns as requested
-    # Note: 'decision_date' is mapped to 'date_received' and 'decision_code' is mapped to 'decision_description'
-    # as these are the available column names in the loaded FDA JSON data.
-    selected_df = df_fda_json[['k_number', 'applicant','device_name', 'contact', 
-        'decision_date', 'date_received','decision_code',
-       'expedited_review_flag','clearance_type', 'statement_or_summary', 'product_code']]
-
-    return selected_df
-
-# Load the data
-df = load_fda_data()
-          
+def load_data():
+    return pd.read_csv(
+         r"https://raw.githubusercontent.com/d8557379/FDA_510K_streamlit_app/main/FDA510k.csv",
+        keep_default_na=True,
+        encoding="cp1252")
+    
+df = load_data()
+df['decision_date'] = pd.to_datetime(df['decision_date'], errors='coerce')
+df['date_received'] = pd.to_datetime(df['date_received'], errors='coerce')
+filtered_df = df.copy()   
+    
 st.title("FDA 510K Explorer")
  
 # -----------------------------
@@ -56,21 +75,15 @@ st.title("FDA 510K Explorer")
 # -----------------------------
 st.sidebar.header("Filters")
 
-# Ensure 'decision_date' and 'date_received' are in datetime format
-df['decision_date'] = pd.to_datetime(df['decision_date'], errors='coerce')
-df['date_received'] = pd.to_datetime(df['date_received'], errors='coerce')
-  
-filtered_df = df.copy()
-filtered_df = filtered_df.sort_values(by="decision_date", ascending=False)
-
 
 # --- Date Range Filter for 'decision_date' ---
 st.sidebar.subheader('Decision Date Filter')
+
 min_decision_date = filtered_df['decision_date'].min().date() if not filtered_df['decision_date'].min() is pd.NaT else datetime.date(1960, 1, 1) # Default min date
 max_decision_date = filtered_df['decision_date'].max().date() if not filtered_df['decision_date'].max() is pd.NaT else datetime.date.today() # Default max date
 
 start_decision_date = st.sidebar.date_input('Start Decision Date', value=None, key='start_decision_date')
-end_decision_date = st.sidebar.date_input('End Decision Date', value=None, key='end_decision_date')
+end_decision_date = st.sidebar.date_input('End Decision Date', value=max_decision_date, key='end_decision_date')
 
 # Apply decision date filter
 if start_decision_date and end_decision_date:
@@ -85,7 +98,7 @@ min_received_date = filtered_df['date_received'].min().date() if not filtered_df
 max_received_date = filtered_df['date_received'].max().date() if not filtered_df['date_received'].max() is pd.NaT else datetime.date.today() # Default max date
 
 start_received_date = st.sidebar.date_input('Start Received Date', value=None, key='start_received_date')
-end_received_date = st.sidebar.date_input('End Received Date', value=None, key='end_received_date')
+end_received_date = st.sidebar.date_input('End Received Date', value=max_received_date, key='end_received_date')
 
 # Apply received date filter
 if start_received_date and end_received_date:
@@ -190,15 +203,11 @@ if "k_number" in filtered_df.columns and kumber_filter_value:
         .fillna("")
         .str.contains(kumber_filter_value, case=False, na=False)
     ] 
-# Convert date columns to datetime
-filtered_df["date_received"] = pd.to_datetime(filtered_df["date_received"])
-filtered_df["decision_date"] = pd.to_datetime(filtered_df["decision_date"])
-filtered_df["Review Time (Days)"] = ( filtered_df["decision_date"] - filtered_df["date_received"]).dt.days
 
-filtered_df["year"] = filtered_df["date_received"].dt.year
 # Format the datetime objects to display only the date part (YYYY-MM-DD)
-filtered_df['date_received'] = filtered_df['date_received'].dt.strftime('%Y-%m-%d')
-filtered_df['decision_date'] = filtered_df['decision_date'].dt.strftime('%Y-%m-%d')
+df['date_received'] = df['date_received'].dt.strftime('%Y-%m-%d-%Y')
+df['decision_date'] = df['decision_date'].dt.strftime('%Y-%m-%d')
+
 # -----------------------------
 # Display Results
 # -----------------------------
@@ -207,7 +216,7 @@ st.subheader("Filtered 510K Records")
 st.write(f"Records found: {len(filtered_df):,}")
  
 st.dataframe(
-    filtered_df,
+    filtered_df.drop(columns=["year"]),
     height=600,
     width="content",
     hide_index=True
