@@ -115,7 +115,7 @@ for col in df.columns:
 
     unique_values = sorted(filtered_df[col].dropna().astype(str).unique())
  
-    if len(unique_values) <= 20:
+    if len(unique_values) <= 30:
         selected = st.sidebar.multiselect(
             f"{col}",
             unique_values,
@@ -135,12 +135,13 @@ for col in df.columns:
         )
  
         if text_filter:
-            filtered_df = filtered_df[
-                filtered_df[col]
+
+            filtered_df = filtered_df[filtered_df[col]
                 .astype(str)
-                .str.contains(text_filter, case=False, na=False)
-            ]
- 
+                .str.replace(r"\s+", " ", regex=True)
+                .str.strip()
+                .str.contains(text_filter.strip(), case=False, na=False)
+]
 st.sidebar.markdown("---")
 st.sidebar.subheader("Reset Filters")
  
@@ -157,6 +158,14 @@ if "k_number" not in st.session_state:
 if st.sidebar.button("Reset Filters"):
     st.session_state["applicant"] = ""
     st.session_state["k_number"] = ""
+    st.session_state["device_name"] = ""
+    st.session_state["contact"] = ""
+    st.session_state["decision_date"] = ""
+    st.session_state["date_received"] = ""
+    st.session_state["expedited_review_flag"] = ""
+    st.session_state["clearance_type"] = ""
+    st.session_state["product_code"] = ""
+
     st.rerun()
 
 
@@ -221,135 +230,172 @@ st.dataframe(
     width="content",
     hide_index=True
 )
-# 
-## -----------------------------
-## Build FDA PDF Links
-## -----------------------------
-#st.subheader("FDA 510K Documents")
-# 
-#docs = ["A", "B", "C"]
-#mapping = {'A': 'Approval Order', 'B': 'Summary', 'C': 'Labeling'}
-#
-#if "KNUMBER" in filtered_df.columns and "year" in filtered_df.columns:
-# 
-#    pdf_rows = []
-# 
-#    unique_df = (
-#        filtered_df[["KNUMBER", "year"]]
-#        .drop_duplicates()
-#        .reset_index(drop=True)
-#    )
-#
-#
-#    for _, row in unique_df.iterrows():
-# 
-#        510k = str(row["KNUMBER"])
-#        
-#        yr=int(str(row["year"]))
-#        if yr < 2002:
-#            year2 = ""
-#        else:
-#            year2 = str(int(str(row["year"])[-2:]))
-#        
-#        
-#
-#        for doc in docs:
-#            url = (
-#            f"https://www.accessdata.fda.gov/cdrh_docs/pdf{year2}/"
-#            f"{510k}{doc}.pdf"
-#            )
-#            
-#            fallback_url = (f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfpma/pma.cfm?ID={pma}")
-#            
-#            pdf_rows.append({
-#            "PMANUMBER": pma,
-#            "Document": doc,
-#            "PDF Link": url,
-#            "Verified Link": fallback_url
-#                })
-#    
-#    pdf_df = pd.DataFrame(pdf_rows)
-#    pdf_df['Document Name'] = pdf_df['Document'].map(mapping)
-#    
-#st.dataframe(
-#    pdf_df[['PMANUMBER','Document Name', 'PDF Link', "Verified Link"]].drop_duplicates(),
-#    width='stretch',
-#    column_config={
-#        "PDF Link": st.column_config.LinkColumn(
-#            "PDF Link",
-#            display_text=r".*/([^/]+\.pdf)$"
-#        ),
-#        "Verified Link": st.column_config.LinkColumn(
-#            "Verified Link",
-#            display_text=r".*ID=([^/]+)"
-#        )
-#    },
-#    hide_index=True
-#)
-# 
-## -----------------------------
-## Download PDFs as ZIP
-## -----------------------------
-#
-#
-#st.subheader("Download PDFs")
-#
-#if st.button("Prepare ZIP of All Visible PDFs"):
-#	progress = st.progress(0)
-#	
-#	zip_buffer = io.BytesIO()
-#	
-#	total = len(pdf_rows)
-#	
-#	if total == 0:
-#		st.warning("No PDFs found to prepare in the ZIP.")
-#	else:
-#		with zipfile.ZipFile(
-#			zip_buffer,
-#			mode="w",
-#			compression=zipfile.ZIP_DEFLATED,
-#		) as zip_file:
-#			
-#			for i, row in enumerate(pdf_rows):
-#				
-#				url = row["PDF Link"]
-#				
-#				filename = (
-#					f"{row['PMANUMBER']}"
-#					f"{row['Document']}.pdf"
-#				)
-#				
-#				st.write(f"Attempting to download: {filename} from {url}") # Debugging line
-#				try:
-#					r = requests.get(url, timeout=30)
-#					
-#					if r.status_code == 200:
-#						zip_file.writestr(
-#							filename,
-#							r.content,
-#						)
-#						st.write(f"Successfully added {filename} to ZIP.") # Debugging line
-#					else:
-#						st.warning(f"Failed to download {filename} (Status: {r.status_code}).") # Debugging line
-#					
-#				except requests.exceptions.RequestException as e:
-#					st.error(f"Error downloading {filename} from {url}: {e}") # Debugging line
-#				except Exception as e:
-#					st.error(f"An unexpected error occurred for {filename}: {e}") # Debugging line
-#			
-#				progress.progress((i + 1) / total)
-#				
-#		zip_buffer.seek(0)
-#		
-#		st.success(
-#			f"ZIP prepared with up to {total} PDFs."
-#		)
-#		
-#	
-#	st.download_button(
-#		label="Download ZIP",
-#		data=zip_buffer,
-#		file_name="pma_pdfs.zip",
-#		mime="application/zip",
-#		key="download_zip_button" # Added unique key
-#	)
+
+# -----------------------------
+# Build FDA PDF Links
+# -----------------------------
+st.subheader("FDA 510K Documents")
+
+docs = ["A"]
+mapping = {'A': 'Summary'}
+
+if "k_number" in filtered_df.columns and "year" in filtered_df.columns:
+
+   pdf_rows = []
+
+   unique_df = (
+       filtered_df[["k_number","applicant", "year"]]
+       .drop_duplicates()
+       .reset_index(drop=True)
+   )
+
+
+   for _, row in unique_df.iterrows():
+
+       pmn = str(row["k_number"])
+       
+       yr=int(str(row["year"]))
+       if yr < 2002:
+           year2 = ""
+       else:
+           year2 = str(int(str(row["year"])[-2:]))
+       
+       
+
+       for doc in docs:
+           url1 = (
+           f"https://www.accessdata.fda.gov/cdrh_docs/pdf{year2}/"
+           #f"https://www.accessdata.fda.gov/cdrh_docs/reviews/"
+           f"{pmn}.pdf"
+           )
+           url2 = (
+           f"https://www.accessdata.fda.gov/cdrh_docs/reviews/"
+           f"{pmn}.pdf"
+           )           
+           fallback_url = (f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfpmn/pmn.cfm?ID={pmn}")
+
+           
+           pdf_rows.append({
+           "K_Number": pmn,
+            "Applicant Name": row["applicant"],
+           "Summary": url1,
+           "Decision Summary": url2,
+           "FDA Source": fallback_url
+               })
+   
+   pdf_df = pd.DataFrame(pdf_rows)
+   
+st.dataframe(
+   pdf_df[['K_Number',"Applicant Name",'Summary', 'Decision Summary', "FDA Source"]].drop_duplicates(),
+   width='stretch',
+   column_config={
+       "Summary": st.column_config.LinkColumn(
+           "Summary",
+           display_text=r".*/([^/]+\.pdf)$"
+       ),
+        "Decision Summary": st.column_config.LinkColumn(
+        "Decision Summary",
+           display_text=r".*/([^/]+\.pdf)$"
+       ),
+       "FDA Source": st.column_config.LinkColumn(
+           "FDA Source",
+           display_text=r".*ID=([^/]+)"
+       )
+   },
+   hide_index=True
+)
+
+# -----------------------------
+# Download PDFs as ZIP
+# -----------------------------
+
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+}
+st.subheader("Download PDFs")
+
+if st.button("Prepare ZIP of All Visible PDFs"):
+
+    progress_text = st.empty()
+    progress_bar = st.progress(0)
+    zip_buffer = io.BytesIO()
+
+    total_pdfs = len(pdf_rows)
+    
+    if total_pdfs == 0:
+        st.warning("No PDFs found to prepare in the ZIP.")
+
+    else:
+        with zipfile.ZipFile(
+            zip_buffer,
+            mode="w",
+            compression=zipfile.ZIP_DEFLATED,
+        ) as zip_file:
+
+            for i, row in enumerate(pdf_rows):
+                current_progress = (i + 1) / total_pdfs
+                progress_text.text(f"Downloading PDF {i + 1} of {total_pdfs}: {row['K_Number']}.pdf")
+                progress_bar.progress(current_progress)                
+
+                pmn = row["K_Number"]  # Example: K252424
+
+                # Extract year from PMN if available
+                # K252424 -> 25
+                year2 = pmn[1:3]
+
+                url1 = (
+                    f"https://www.accessdata.fda.gov/cdrh_docs/pdf{year2}/"
+                    f"{pmn}.pdf"
+                )
+
+                url2 = (
+                    f"https://www.accessdata.fda.gov/cdrh_docs/reviews/"
+                    f"{pmn}.pdf"
+
+                )
+
+                urls_to_try = [
+                    ("summary", url1),
+                    ("decision_summary", url2),
+                ]
+
+                for source_name, url in urls_to_try:
+
+                    filename = f"{pmn}_{source_name}.pdf"
+
+                    st.write(
+                        f"Attempting: {filename} from {url}"
+                    )
+                    try:
+                        r = requests.get(url, timeout=30, headers=headers)
+                        
+                        if r.status_code == 200:
+                            zip_file.writestr(
+                                filename,
+                                r.content,
+                            )
+                            st.info(f"Successfully added {filename} to ZIP.")
+                        else:
+                            st.warning(f"Failed to download {filename} (Status: {r.status_code}).")
+                        
+                    except requests.exceptions.RequestException as e:
+                        st.error(f"Error downloading {filename} from {url}: {e}")
+                    except Exception as e:
+                        st.error(f"An unexpected error occurred for {filename}: {e}")
+
+           
+        zip_buffer.seek(0)
+        progress_text.empty() # Clear progress text
+        progress_bar.empty() # Clear progress bar
+
+        st.success(
+            f"ZIP prepared with {total_pdfs} PDFs. Click the button below to download."
+        )
+        
+        st.download_button(
+            label="Download ZIP",
+            data=zip_buffer,
+            file_name="510k_pdfs.zip",
+            mime="application/zip",
+            key="download_zip_button"
+        )
