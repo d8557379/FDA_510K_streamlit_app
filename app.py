@@ -230,7 +230,6 @@ st.dataframe(
     width="content",
     hide_index=True
 )
-
 # -----------------------------
 # Build FDA PDF Links
 # -----------------------------
@@ -253,14 +252,14 @@ if "k_number" in filtered_df.columns and "year" in filtered_df.columns:
    for _, row in unique_df.iterrows():
 
        pmn = str(row["k_number"])
-       
+
        yr=int(str(row["year"]))
        if yr < 2002:
            year2 = ""
        else:
            year2 = str(int(str(row["year"])[-2:]))
-       
-       
+
+
 
        for doc in docs:
            url1 = (
@@ -271,10 +270,16 @@ if "k_number" in filtered_df.columns and "year" in filtered_df.columns:
            url2 = (
            f"https://www.accessdata.fda.gov/cdrh_docs/reviews/"
            f"{pmn}.pdf"
-           )           
-           fallback_url = (f"https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfpmn/pmn.cfm?ID={pmn}")
+           )
 
-           
+
+           if pmn.startswith("DEN"):
+               fallback_url = ("https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfpmn/denovo.cfm?ID="f"{pmn}")
+               summary_value = url2
+           else:
+               fallback_url = ("https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfpmn/pmn.cfm?ID="f"{pmn}")
+               summary_value = url1
+
            pdf_rows.append({
            "K_Number": pmn,
             "Applicant Name": row["applicant"],
@@ -282,9 +287,8 @@ if "k_number" in filtered_df.columns and "year" in filtered_df.columns:
            "Decision Summary": url2,
            "FDA Source": fallback_url
                })
-   
    pdf_df = pd.DataFrame(pdf_rows)
-   
+
 st.dataframe(
    pdf_df[['K_Number',"Applicant Name",'Summary', 'Decision Summary', "FDA Source"]].drop_duplicates(),
    width='stretch',
@@ -320,7 +324,7 @@ if st.button("Prepare ZIP of All Visible PDFs"):
     progress_bar = st.progress(0)
     zip_buffer = io.BytesIO()
 
-    total_pdfs = len(pdf_rows)
+    total_pdfs = len(pdf_rows)+1
     
     if total_pdfs == 0:
         st.warning("No PDFs found to prepare in the ZIP.")
@@ -340,19 +344,12 @@ if st.button("Prepare ZIP of All Visible PDFs"):
                 pmn = row["K_Number"]  # Example: K252424
 
                 # Extract year from PMN if available
-                # K252424 -> 25
+  
                 year2 = pmn[1:3]
 
-                url1 = (
-                    f"https://www.accessdata.fda.gov/cdrh_docs/pdf{year2}/"
-                    f"{pmn}.pdf"
-                )
+                url1 = row["Summary"]
 
-                url2 = (
-                    f"https://www.accessdata.fda.gov/cdrh_docs/reviews/"
-                    f"{pmn}.pdf"
-
-                )
+                url2 = row["Decision Summary"]
 
                 urls_to_try = [
                     ("summary", url1),
