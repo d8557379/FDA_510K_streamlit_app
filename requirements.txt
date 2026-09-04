@@ -1,0 +1,6 @@
+streamlit>=1.40
+pandas>=2.2
+requests>=2.32
+lxml>=5.3
+beautifulsoup4>=4.12
+html5lib>=1.1
