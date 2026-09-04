@@ -1,17 +1,4 @@
-#try:
-#    import lxml
-#except ImportError:
-#    import subprocess
-#    import sys
-#
-#    subprocess.check_call([
-#        sys.executable,
-#        "-m",
-#        "pip",
-#        "install",
-#        "lxml"
-#    ])
-import lxml
+
 import streamlit as st
 import pandas as pd
 import requests
@@ -21,7 +8,6 @@ import io
 import json
 import zipfile
 from datetime import datetime
-import lxml 
 st.set_page_config(page_title="FDA 510K Explorer", layout="wide")
 page = st.sidebar.radio("FDA Database", ["CDRH 510(k)", "CBER Biological 510(k)"]
 )
