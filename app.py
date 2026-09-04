@@ -1,3 +1,16 @@
+try:
+    import lxml
+except ImportError:
+    import subprocess
+    import sys
+
+    subprocess.check_call([
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "lxml"
+    ])
 
 import streamlit as st
 import pandas as pd
@@ -8,9 +21,10 @@ import io
 import json
 import zipfile
 from datetime import datetime
-
+import lxml 
 st.set_page_config(page_title="FDA 510K Explorer", layout="wide")
- 
+page = st.sidebar.radio("FDA Database", ["CDRH 510(k)", "CBER Biological 510(k)"]
+)
 # -----------------------------
 # Load Data
 # -----------------------------
@@ -67,7 +81,69 @@ df = load_data()
 df['decision_date'] = pd.to_datetime(df['decision_date'], errors='coerce')
 df['date_received'] = pd.to_datetime(df['date_received'], errors='coerce')
 filtered_df = df.copy()   
+
+if page == "CBER Biological 510(k)":
+
+    st.title("FDA CBER Biological 510(k) Explorer")
+
+    cber_links = pd.DataFrame(
+        {
+            "Year": [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017],
+            "FDA Page": [
+                "https://www.fda.gov/vaccines-blood-biologics/substantially-equivalent-510k-device-information/cleared-510k-submissions-supporting-documents-2026",
+                "https://www.fda.gov/vaccines-blood-biologics/substantially-equivalent-510k-device-information/cleared-510k-submissions-supporting-documents-2025",
+                "https://www.fda.gov/vaccines-blood-biologics/substantially-equivalent-510k-device-information/cleared-510k-submissions-supporting-documents-2024",
+                "https://www.fda.gov/vaccines-blood-biologics/substantially-equivalent-510k-device-information/cleared-510k-submissions-supporting-documents-2023",
+                "https://web.archive.org/web/20240417025726/https://www.fda.gov/vaccines-blood-biologics/substantially-equivalent-510k-device-information/cleared-510k-submissions-supporting-documents-2022",
+                "https://web.archive.org/web/20240519015307/https://www.fda.gov/vaccines-blood-biologics/substantially-equivalent-510k-device-information/cleared-510k-submissions-supporting-documents-2021",
+                "https://web.archive.org/web/20221128045708/https://www.fda.gov/vaccines-blood-biologics/substantially-equivalent-510k-device-information/cleared-510k-submissions-supporting-documents-2020",
+                "https://web.archive.org/web/20240415164859/https://www.fda.gov/vaccines-blood-biologics/substantially-equivalent-510k-device-information/cleared-510k-submissions-supporting-documents-2019",
+                "https://web.archive.org/web/20231204041947/https://www.fda.gov/vaccines-blood-biologics/substantially-equivalent-510k-device-information/cleared-510k-submissions-supporting-documents-2018",
+                "https://web.archive.org/web/20240415163025/https://www.fda.gov/vaccines-blood-biologics/substantially-equivalent-510k-device-information/cleared-510k-submissions-supporting-documents-2017",
+
+                              
+            ]
+        }
+    )
+
+    selected_year = st.selectbox(
+        "Select Year",
+        sorted(cber_links["Year"], reverse=True)
+    )
+
+    url = cber_links.loc[
+        cber_links["Year"] == selected_year,
+        "FDA Page"
+    ].iloc[0]
     
+    try:
+        tables = pd.read_html(url)
+
+        if tables:
+            st.subheader(f"{selected_year} FDA Biological 510(k) Clearances")
+            st.dataframe(
+                tables[0],
+                height=600,
+                use_container_width=True
+            )
+        else:
+            st.warning("No table found for this year.")
+
+    except Exception as e:
+        st.error(f"Unable to load FDA data: {e}")
+
+    st.subheader("FDA Cleared 510(k) Submissions with Supporting Documents")
+    st.dataframe(
+        cber_links,
+        column_config={
+            "FDA Page": st.column_config.LinkColumn("FDA Page", display_text=r"Supporting Documents")
+        },
+        hide_index=True,
+        use_container_width=True
+            )
+
+    st.stop()
+        
 st.title("FDA 510K Explorer")
  
 # -----------------------------
