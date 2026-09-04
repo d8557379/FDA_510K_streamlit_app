@@ -1,17 +1,17 @@
-try:
-    import lxml
-except ImportError:
-    import subprocess
-    import sys
-
-    subprocess.check_call([
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "lxml"
-    ])
-
+#try:
+#    import lxml
+#except ImportError:
+#    import subprocess
+#    import sys
+#
+#    subprocess.check_call([
+#        sys.executable,
+#        "-m",
+#        "pip",
+#        "install",
+#        "lxml"
+#    ])
+import lxml
 import streamlit as st
 import pandas as pd
 import requests
