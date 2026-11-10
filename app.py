@@ -1,4 +1,5 @@
-
+pip install lxml
+import lxml
 import streamlit as st
 import pandas as pd
 import requests
@@ -60,8 +61,7 @@ page = st.sidebar.radio("FDA Database", ["CDRH 510(k)", "CBER Biological 510(k)"
 def load_data():
     return pd.read_csv(
          r"https://raw.githubusercontent.com/d8557379/FDA_510K_streamlit_app/main/FDA510k.csv",
-        keep_default_na=True,
-        encoding="cp1252")
+        keep_default_na=True)
     
 df = load_data()
 df['decision_date'] = pd.to_datetime(df['decision_date'], errors='coerce')
