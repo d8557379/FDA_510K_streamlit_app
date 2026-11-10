@@ -1,4 +1,4 @@
-pip install lxml
+
 import lxml
 import streamlit as st
 import pandas as pd
